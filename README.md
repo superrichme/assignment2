@@ -56,16 +56,14 @@ This Task focuses on the challenges of GNSS positioning within urban environment
 * Data Loading:   - Loads pseudoranges and satellite positions from 'navSolutions_opensky.mat'.
 * Weighted Least Squares (WLS) Estimation (Simplified Implementation):
      - The core of GNSS positioning involves solving an overdetermined system of equations derived from pseudorange measurements. The basic pseudorange equation for satellite 'i' is `rho_i = sqrt((x_sat_i - x_user)^2 + (y_sat_i - y_user)^2 + (z_sat_i - z_user)^2) + c * dt_user + error_i`
-     - This nonlinear equation is typically linearized around an approximate user position, leading to a linear system: delta_rho = A * delta_x
-     - The script implements a simplified, non-iterative approach. It calculates a design matrix 'A' where each row (for satellite 'i') is approximately ` A(i,:) = [ u_x_i, u_y_i, u_z_i, -1 ]`, where (u_x_i, u_y_i, u_z_i) is the unit vector pointing *from the origin (0,0,0)* to the satellite. 
+     - This nonlinear equation is typically linearized around an approximate user position, leading to a linear system: `delta_rho = A * delta_x`.
+     - The script implements a simplified, non-iterative approach. It calculates ` A(i,:) = [ u_x_i, u_y_i, u_z_i, -1 ]`, where `(u_x_i, u_y_i, u_z_i)` is the unit vector pointing *from the origin (0,0,0)* to the satellite. 
      - A weight matrix 'W' is used. Here, `W = eye(n)` is used, implying equal weighting for all satellite measurements (Unweighted Least Squares).
      - The state vector `position` (containing [x, y, z, clock_offset_term]) is estimated using the WLS formula:`position = (A' * W * A)^(-1) * (A' * W * current_pseudoranges)`.
 * Fault Detection 
     - Receiver Autonomous Integrity Monitoring (RAIM) techniques are used to check the consistency of measurements.
     - The script calculates the residuals: `residuals = current_pseudoranges - A * position`.
-    - It computes a test statistic based on the sum of squared weighted residuals:
-        chi_square = (residuals' * W * residuals) / sigma_r2
-      where `sigma_r2 = (residuals' * residuals) / (n - 4)` is the estimated variance of the residuals (a-posteriori variance factor). `n` is the number of satellites, and 4 is the number of estimated parameters (x, y, z, clock).
+    - It computes a test statistic based on the sum of squared weighted residuals `chi_square = (residuals' * W * residuals) / sigma_r2`, where `sigma_r2 = (residuals' * residuals) / (n - 4)` is the estimated variance of the residuals (a-posteriori variance factor). `n` is the number of satellites, and 4 is the number of estimated parameters (x, y, z, clock).
     - This statistic is compared against a critical value from the Chi-Square distribution (`chi2inv(0.99, n - 4)`), corresponding to a significance level (alpha) of 0.01 and `n-4` degrees of freedom.
     - If `chi_square > critical_value`, it indicates a potential fault or inconsistency in the measurements for that epoch (e.g., due to large multipath or other errors).
 * Protection Level (PL) Calculation (Simplified):
