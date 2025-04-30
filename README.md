@@ -76,8 +76,63 @@ This Task focuses on the challenges of GNSS positioning within urban environment
 
 The plots visualize the spatial distribution of the available GNSS satellites over the entire observation period. This distribution represents the fundamental input for the positioning algorithm: the locations of the signal sources (satellites). The arrangement and number of these points at any given time determine the geometric strength of the satellite constellation available to the receiver. In the context of the urban task, observing this geometry helps understand the potential baseline quality of the solution before considering urban-specific impairments.
 
+## Task 3 – GPS RAIM (Receiver Autonomous Integrity Monitoring)
+This project implements a GNSS positioning algorithm using the Weighted Least Squares (WLS) method. It incorporates a SkyMask to filter visible satellites and applies elevation-dependent weighting. 
 
+### Implementation Details
 
+The provided code implements the following steps:
+
+* Data Loading
+  - Loads satellite pseudorange, azimuth, elevation, and position data from `navSolutions_urban.mat`.
+  - Loads SkyMask horizon data (azimuth and blocking elevation) from `skymask_A1_urban.csv`.
+
+* SkyMask Processing
+  - The SkyMask data is interpolated to provide blocking elevation for every degree of azimuth.
+  - An initial adjustment of the SkyMask is applied by subtracting a `delta` (set to 25 degrees) from the blocking elevation. Satellites below this `SkyMaskRel` elevation are considered blocked.
+  - A plot of the *original* SkyMask horizon is generated.
+
+![image](https://github.com/superrichme/assignment2/blob/main/code/task2/SkyMask%20Horizon.jpg)
+
+This Figure shows the Skymask horizon, plotting blocking elevation as a function of azimuth.
+ 
+* Satellite Visibility and Weighting
+  -  For each epoch, the code determines which satellites are visible based on their elevation exceeding the `SkyMaskRel` elevation for their respective azimuth.
+  -  For visible satellites, a weight `w_i` is calculated based on the satellite's elevation relative to the blocking elevation and its absolute elevation:
+        ```
+        w_i = sin(deg2rad(elevation_i - blocking_elevation_i)) * sin(deg2rad(elevation_i))
+        ```
+  -  If fewer than 4 visible satellites are available in an epoch, the epoch is skipped (no solution can be computed).
+  
+* Weighted Least Squares (WLS) Positioning
+  - For each valid epoch (>= 4 visible satellites), a Gauss-Newton iterative method is used to solve for the receiver state vector `x = [x, y, z, c*dt]` (ECEF coordinates and receiver clock bias scaled by speed of light).
+  - The process starts with an initial guess (`x0, y0, z0` from `lat0, lon0, alt0`, and `dt0=0`).
+  - In each iteration:
+  - Predicted pseudoranges (`rho_hat`) are calculated based on the current state estimate and satellite positions.
+  - Residuals (`r`) are formed: `r_i = pseudorange_measured_i - pseudorange_predicted_i`.
+  - The design matrix (`H`) is constructed. Each row corresponds to a visible satellite and contains the partial derivatives of the predicted pseudorange with respect to the state variables:
+            ```
+            H_i = [ (x_est(1) - Psat_i(1))/rho_hat_i, (x_est(2) - Psat_i(2))/rho_hat_i, (x_est(3) - Psat_i(3))/rho_hat_i, -c ]
+            ```
+            (Where `Psat_i` are the ECEF coordinates of satellite `i`).
+   -  A diagonal weighting matrix `W` is formed with `W_ii = w_i`.
+   -  The state correction `dx` is computed using the weighted least squares formula:
+            ```
+            dx = (H^T W H)^-1 H^T W r
+            ```
+   -  The state estimate is updated: `x_est = x_est + dx`.
+   -  The iteration continues until the norm of `dx` is below a tolerance or a maximum number of iterations is reached.
+### Results Analysis (Based on the provided plot and code output)
+
+![image](https://github.com/superrichme/assignment2/blob/main/code/task2/GNSS%20Position.jpg)
+
+This figure shows the estimated positions over time relative to the `Ground Truth`.
+
+  -  Position Scatter: The estimated positions form a cluster of points. They appear somewhat spread out, potentially forming a line, which could be indicative of specific satellite geometry or multipath effects in the urban environment, even with the SkyMask applied.
+  - Bias: There is a noticeable offset between the cluster of estimated positions and the `Ground Truth`. This suggests a systematic error source is affecting the measurements or the model, despite the weighting and masking.
+  - Average Position: The `Average Estimated Positions` marker (red circle, computed from the first 9 valid points) falls within the cluster of estimated points. Its position relative to the ground truth quantifies the overall bias observed for this data segment. The printed average longitude and latitude provide the numerical values for this average position.
+  -  Satellite Visibility: The code prints the minimum and maximum number of visible satellites per epoch. A low minimum (especially close to the required 4) indicates challenging geometry and potential difficulty in maintaining a robust solution. The fallback mechanism attempting a relaxed SkyMask suggests that the initial mask with `delta=25` significantly reduced the number of visible satellites.
+    
 ## Task 4 – LEO Satellites for Navigation
 
 ### Evaluating the Potential of LEO Satellites for Navigation: Augmentation, Not Replacement
