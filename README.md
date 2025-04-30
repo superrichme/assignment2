@@ -1,6 +1,6 @@
 AAE6102-Assignment2
 ================
-## Task 1 –  – Differential GNSS Positioning
+## Task 1 –  Differential GNSS Positioning
 
 ### Evaluating Advanced GNSS Techniques for Smartphone Navigation
 
@@ -17,8 +17,9 @@ An alternative route to high accuracy that avoids dependence on local base stati
 Considering the user experience, DGNSS (especially SBAS) is largely seamless. RTK, PPP, and PPP-RTK introduce complexity through service configuration and potential subscription costs. Their high processing and continuous data needs also lead to increased battery drain, a critical factor for mobile devices. Future advancements hold potential for improvement. Wider adoption of power-efficient multi-frequency chipsets, enhanced antenna designs (within physical limits), new GNSS signals with built-in corrections (like Galileo HAS), expanding correction service availability (potentially at lower costs), and tighter sensor fusion (integrating IMU, visual odometry, etc.) will be key enablers. Sensor fusion, in particular, can help bridge GNSS gaps during outages, improving reliability across all techniques.
 
 In conclusion, while standard GNSS with sensor fusion remains the practical baseline for most current smartphone navigation, DGNSS provides a valuable modest enhancement. RTK's extreme sensitivity makes it unsuitable for reliable mobile use. PPP's slow convergence limits its real-time applicability. PPP-RTK presents the most compelling path forward for achieving widespread, reliable centimeter-to-decimeter level accuracy on smartphones, balancing accuracy, convergence speed, and robustness. However, its adoption hinges on continued progress in hardware, service infrastructure, cost reduction, and seamless integration into the mobile ecosystem. The choice ultimately depends on the specific application's tolerance for accuracy, cost, complexity, and convergence delays.
+(853 words)
 
-## Quantitative Analysis 
+### Quantitative Analysis 
 
 | Feature                 | DGNSS (SBAS/Local)          | RTK (Real-Time Kinematic)      | PPP (Precise Point Positioning) | PPP-RTK (Network/SSR)         | Standalone GNSS (Baseline) |
 | :---------------------- | :-------------------------- | :----------------------------- | :------------------------------ | :---------------------------- | :------------------------- |
@@ -35,6 +36,49 @@ In conclusion, while standard GNSS with sensor fusion remains the practical base
 | **Power Consumption**   | Low                         | **High**                       | High                          | **High**                      | Low                        |
 
 Key quantitative differences are stark across these techniques. Accuracy potential is highest with RTK (centimeter-level), followed by converged PPP-RTK and PPP (decimeter-level), while DGNSS provides meter-level improvements. Convergence time critically separates them: DGNSS is near-instantaneous (<10s), RTK is fast only under ideal conditions (10s-2min), PPP-RTK takes 30 seconds to 5 minutes, whereas PPP is significantly slower (15-45+ min). Achieving high precision with RTK, PPP, or PPP-RTK necessitates dual-frequency hardware and raw measurement access. Infrastructure needs also diverge: RTK demands a very close base station (<20km), PPP requires global correction services, PPP-RTK relies on network service providers, and DGNSS uses SBAS or a moderately local base. Crucially, RTK's reliability plummets in urban settings due to its sensitivity, while PPP-RTK generally demonstrates greater robustness in such challenging environments.
+
+
+
+
+## Task 3 – GNSS in Urban Areas
+
+This Task focuses on the challenges of GNSS positioning within urban environments. These areas are characterized by:
+* Signal Blockage: Buildings and structures obstruct the line-of-sight path between satellites and the receiver.
+* Multipath Effects: Signals reflect off surfaces, creating delayed and distorted versions of the original signal that interfere with the direct signal, leading to ranging errors.
+*  Poor Satellite Visibility: The limited view of the sky reduces the number and geometric diversity of visible satellites, weakening the positioning solution (high Geometric Dilution of Precision - GDOP).
+  
+ The objective is to improve GNSS positioning performance using the provided "Urban" dataset ('navSolutions_opensky.mat'). A key tool mentioned is a skymask, which defines elevation angle blockages for different azimuth angles, simulating the urban canyon effect. The ground truth position is provided as:
+   - Latitude: 22.3198722 degrees
+   - Longitude: 114.209101777778 degrees
+   - Altitude: 3.0 meters
+
+ ### Methodology and Principles
+* Data Loading:   - Loads pseudoranges and satellite positions from 'navSolutions_opensky.mat'.
+* Weighted Least Squares (WLS) Estimation (Simplified Implementation):
+     - The core of GNSS positioning involves solving an overdetermined system of equations derived from pseudorange measurements. The basic pseudorange equation for satellite 'i' is `rho_i = sqrt((x_sat_i - x_user)^2 + (y_sat_i - y_user)^2 + (z_sat_i - z_user)^2) + c * dt_user + error_i`
+     - This nonlinear equation is typically linearized around an approximate user position, leading to a linear system: delta_rho = A * delta_x
+     - The script implements a simplified, non-iterative approach. It calculates a design matrix 'A' where each row (for satellite 'i') is approximately ` A(i,:) = [ u_x_i, u_y_i, u_z_i, -1 ]`, where (u_x_i, u_y_i, u_z_i) is the unit vector pointing *from the origin (0,0,0)* to the satellite. 
+     - A weight matrix 'W' is used. Here, `W = eye(n)` is used, implying equal weighting for all satellite measurements (Unweighted Least Squares).
+     - The state vector `position` (containing [x, y, z, clock_offset_term]) is estimated using the WLS formula:`position = (A' * W * A)^(-1) * (A' * W * current_pseudoranges)`.
+* Fault Detection 
+    - Receiver Autonomous Integrity Monitoring (RAIM) techniques are used to check the consistency of measurements.
+    - The script calculates the residuals: `residuals = current_pseudoranges - A * position`.
+    - It computes a test statistic based on the sum of squared weighted residuals:
+        chi_square = (residuals' * W * residuals) / sigma_r2
+      where `sigma_r2 = (residuals' * residuals) / (n - 4)` is the estimated variance of the residuals (a-posteriori variance factor). `n` is the number of satellites, and 4 is the number of estimated parameters (x, y, z, clock).
+    - This statistic is compared against a critical value from the Chi-Square distribution (`chi2inv(0.99, n - 4)`), corresponding to a significance level (alpha) of 0.01 and `n-4` degrees of freedom.
+    - If `chi_square > critical_value`, it indicates a potential fault or inconsistency in the measurements for that epoch (e.g., due to large multipath or other errors).
+* Protection Level (PL) Calculation (Simplified):
+    - The Protection Level represents a bound on the positioning error that can be guaranteed with a high probability (low integrity risk).
+    - The script calculates a very basic PL: `PL = k * sigma`.
+
+### Results and Discussion
+
+![image](https://github.com/superrichme/assignment2/blob/main/code/task3/satellite%20positions.jpg)
+
+The plots visualize the spatial distribution of the available GNSS satellites over the entire observation period. This distribution represents the fundamental input for the positioning algorithm: the locations of the signal sources (satellites). The arrangement and number of these points at any given time determine the geometric strength of the satellite constellation available to the receiver. In the context of the urban task, observing this geometry helps understand the potential baseline quality of the solution before considering urban-specific impairments.
+
+
 
 ## Task 4 – LEO Satellites for Navigation
 
@@ -53,8 +97,9 @@ From a user equipment perspective, current GNSS receivers are fundamentally inco
 Despite these significant challenges, future advancements hold promise. Miniaturized, stable atomic clocks, advanced inter-satellite links for autonomous timing and ranging, novel signal designs optimized for high Doppler, and sophisticated receiver algorithms incorporating sensor fusion (IMU, visual odometry) could gradually improve LEO PNT feasibility.
 
 In conclusion, while LEO satellites offer tantalizing prospects – particularly stronger signals for challenging environments and potentially superior geometry – the inherent difficulties associated with their extreme dynamics, the immense complexity of precise orbit and clock determination at scale, unique error modeling requirements, and the need for entirely new receiver technology make it improbable that they will replace MEO GNSS systems for primary navigation in the foreseeable future. The key limitations stem from the fundamental physics of their orbits and the immense system-level complexity required to achieve GNSS-comparable accuracy and reliability. Instead, the most likely path forward involves LEO systems serving as a powerful augmentation to existing MEO GNSS, creating hybrid solutions that leverage the strengths of both orbital regimes to deliver more robust, available, and potentially more accurate PNT services, especially in demanding scenarios.
+(674 words)
 
-## Comparison Table: MEO GNSS vs. LEO PNT Potential
+### Comparison Table: MEO GNSS vs. LEO PNT Potential
 
 | Feature                    | MEO GNSS (e.g., GPS, Galileo)          | LEO PNT (Potential/Concept)              | Key Implications for Navigation                                  |
 | :------------------------- | :------------------------------------- | :--------------------------------------- | :--------------------------------------------------------------- |
@@ -92,17 +137,20 @@ However, the full power of **GNSS seismology** is often realized through its int
 Despite its profound contributions, **GNSS seismology** is not without challenges. Its sensitivity to the small-amplitude, high-frequency signals associated with smaller earthquakes or potential short-term precursors is generally lower than that of seismometers. Consequently, while GNSS significantly aids hazard assessment and understanding earthquake processes, it has not yet provided the key to reliable short-term earthquake prediction. The unambiguous detection of precursory deformation signals remains an elusive goal. Furthermore, achieving the necessary precision requires sophisticated processing techniques to mitigate noise from various sources, including atmospheric delays (ionosphere and troposphere), signal multipath, antenna monument stability, and reference frame definitions. The logistical and financial burden of establishing and maintaining the dense, high-rate GNSS networks needed for comprehensive monitoring also presents a practical limitation, particularly in remote or offshore regions.
 
 In conclusion, **GNSS seismology** represents a paradigm shift in earthquake science. Its ability to precisely measure ground deformation across diverse spatial and temporal scales – from the slow creep of tectonic plates to the rapid rupture during an earthquake and its aftermath – provides unparalleled insights. Its integration into real-time monitoring and early warning systems offers tangible benefits for hazard mitigation, while its synergy with other observational techniques deepens our fundamental understanding of earthquake mechanisms and fault behavior. While challenges related to sensitivity, prediction, and network deployment persist, the influence of GNSS is undeniable. It has firmly established itself as an indispensable component of the modern seismologist's toolkit, driving significant advancements in our capacity to study, understand, and ultimately live more safely with seismic hazards.
-
+(940 words)
 
 
 > GenAI models information
 ```
 Model: Grok 3
-Prompt 1: Evaluate the performance of DGNSS, RTK, PPP, and PPP-RTK for smartphone navigation by considering their effectiveness across various scenarios (e.g., urban, rural, high-speed movement), focusing on key aspects such as: positioning accuracy and reliability under real-world conditions like signal blockages or multipath effects; hardware, software, and infrastructure requirements (including chip compatibility, processing power, antenna quality, and data subscriptions); convergence time and real-time performance for dynamic applications; user experience in terms of setup complexity and energy efficiency; cost implications and accessibility challenges; and potential improvements from future smartphone or GNSS advancements. How do these factors highlight the strengths and limitations of each technique for navigation purposes?  
+Prompt 1: Evaluate the performance of DGNSS, RTK, PPP, and PPP-RTK for smartphone navigation by considering their effectiveness across various scenarios (e.g., urban, rural, high-speed movement), focusing on key aspects such as: positioning accuracy and reliability under real-world conditions like signal blockages or multipath effects; hardware, software, and infrastructure requirements (including chip compatibility, processing power, antenna quality, and data subscriptions); convergence time and real-time performance for dynamic applications; user experience in terms of setup complexity and energy efficiency; cost implications and accessibility challenges; and potential improvements from future smartphone or GNSS advancements. 
+How do these factors highlight the strengths and limitations of each technique for navigation purposes?  
 
-Prompt 4: Besides, please evaluate the feasibility of using LEO communication satellites for GNSS navigation by comparing their performance to traditional MEO GNSS satellites, focusing on: the impact of LEO orbital characteristics and signal properties (e.g., rapid movement, signal strength, Doppler effects, and orbital geometry) on navigation accuracy; their performance in diverse scenarios like urban canyons, rural areas, or high-speed applications, considering visibility duration and atmospheric effects; the system design and infrastructure demands, such as constellation size, ground segment support, and data processing requirements; the challenges in signal processing and error mitigation (e.g., ionospheric delays, multipath, clock synchronization); the compatibility of current GNSS receivers with LEO signals and integration hurdles; and potential advancements in satellite technology, signal design, or receiver algorithms that could enhance their navigation capabilities. What key limitations emerge from these factors when adapting LEO satellites for GNSS navigation purposes?
+Prompt 4: Besides, please evaluate the feasibility of using LEO communication satellites for GNSS navigation by comparing their performance to traditional MEO GNSS satellites, focusing on: the impact of LEO orbital characteristics and signal properties (e.g., rapid movement, signal strength, Doppler effects, and orbital geometry) on navigation accuracy; their performance in diverse scenarios like urban canyons, rural areas, or high-speed applications, considering visibility duration and atmospheric effects; the system design and infrastructure demands, such as constellation size, ground segment support, and data processing requirements; the challenges in signal processing and error mitigation (e.g., ionospheric delays, multipath, clock synchronization); the compatibility of current GNSS receivers with LEO signals and integration hurdles; and potential advancements in satellite technology, signal design, or receiver algorithms that could enhance their navigation capabilities.
+What key limitations emerge from these factors when adapting LEO satellites for GNSS navigation purposes?
 
-Prompt 5：Evaluate the role of GNSS in GNSS seismology by examining its contributions to precise ground movement measurements, real-time monitoring, and early warning systems, as well as its ability to track tectonic plate movements and deformations. Consider how the accuracy of GNSS data and its integration with other seismological tools enhance seismic analysis and models, while also addressing the challenges that might limit its effectiveness in detecting seismic phenomena and improving earthquake prediction. How do these aspects collectively demonstrate GNSS’s influence on advancing seismic hazard mitigation and understanding earthquake mechanisms?
+Prompt 5：Evaluate the role of GNSS in GNSS seismology by examining its contributions to precise ground movement measurements, real-time monitoring, and early warning systems, as well as its ability to track tectonic plate movements and deformations. Consider how the accuracy of GNSS data and its integration with other seismological tools enhance seismic analysis and models, while also addressing the challenges that might limit its effectiveness in detecting seismic phenomena and improving earthquake prediction.
+How do these aspects collectively demonstrate GNSS’s influence on advancing seismic hazard mitigation and understanding earthquake mechanisms?
 
 Comment: This prompt can provide a more comprehensive understanding of the issues related to the comparison of Smartphone GNSS Navigation Techniques.
 
