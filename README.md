@@ -23,26 +23,26 @@ In conclusion, while standard GNSS with sensor fusion remains the practical base
 
 | Feature                 | DGNSS (SBAS/Local)          | RTK (Real-Time Kinematic)      | PPP (Precise Point Positioning) | PPP-RTK (Network/SSR)         | Standalone GNSS (Baseline) |
 | :---------------------- | :-------------------------- | :----------------------------- | :------------------------------ | :---------------------------- | :------------------------- |
-| **Typical Accuracy (Horizontal)** | **0.5 - 2 meters**          | **0.01 - 0.1 meters** (*Ideal*) | **0.05 - 0.3 meters** (*Converged*) | **0.02 - 0.2 meters** (*Converged*) | **3 - 10+ meters**         |
-| **Typical Accuracy (Vertical)**  | 1 - 5 meters                | 0.02 - 0.2 meters (*Ideal*)    | 0.1 - 0.6 meters (*Converged*)  | 0.05 - 0.4 meters (*Converged*) | 5 - 20+ meters             |
-| **Convergence Time**    | **< 10 seconds**            | **10 sec - 2 min** (*Ideal*)   | **15 - 45+ minutes**            | **30 sec - 5 minutes**        | **< 30 seconds** (TTFF)    |
-| **Reliability (Urban)** | Moderate                    | **Very Low**                   | Low (during convergence), Moderate (after) | Moderate to High            | Low to Moderate            |
-| **Infrastructure Req.** | SBAS: None <br> Local: Base | **Local Base (< 20km)**        | Global Correction Service     | **Network + Service Provider** | Satellites only            |
-| **Hardware Chipset**    | Single Freq. OK           | **Dual Freq. Essential**       | Dual Freq. Recommended        | **Dual Freq. Essential**      | Single Freq. Common        |
-| **Raw Measurements**    | No (Pseudorange sufficient) | **Yes (Phase Essential)**      | **Yes (Phase Essential)**     | **Yes (Phase Essential)**     | No (Position sufficient)   |
-| **Processing Load**     | Low                         | **Very High**                  | High                          | **High to Very High**         | Low                        |
-| **Data Link Required**  | SBAS: No <br> Local: Yes     | **Yes (Continuous, Low Latency)** | Yes (Continuous)            | **Yes (Continuous)**        | No (Optional A-GPS)      |
-| **Typical Cost (Service)** | Free (SBAS)              |  -                  |  -                    |  -               | Free                       |
-| **Power Consumption**   | Low                         | **High**                       | High                          | **High**                      | Low                        |
+| **Typical Accuracy (Horizontal)** |0.5 - 2 meters         | 0.01 - 0.1 meters | 0.05 - 0.3 meters | 0.02 - 0.2 meters | 3 - 10+ meters       |
+| **Typical Accuracy (Vertical)**  | 1 - 5 meters                | 0.02 - 0.2 meters   | 0.1 - 0.6 meters  | 0.05 - 0.4 meters  | 5 - 20+ meters             |
+| **Convergence Time**    | < 10 seconds         | 10 sec - 2 min  | 15 - 45+ minutes            | 30 sec - 5 minutes      | < 30 seconds   |
+| **Reliability (Urban)** | Moderate                    | Very Low                 | Low (during convergence), Moderate (after) | Moderate to High            | Low to Moderate            |
+| **Infrastructure Req.** | SBAS: None <br> Local: Base | Local Base (< 20km)      | Global Correction Service     | Network + Service Provider | Satellites only            |
+| **Hardware Chipset**    | Single Freq. OK           | Dual Freq. Essential    | Dual Freq. Recommended        | Dual Freq. Essential     | Single Freq. Common        |
+| **Raw Measurements**    | No | Yes   | Yes    | Yes    | No   |
+| **Processing Load**     | Low                         | Very High                  | High                          | High to Very High       | Low                        |
+| **Data Link Required**  | SBAS: No <br> Local: Yes     | Yes  | Yes          | Yes      | No     |
+| **Typical Cost (Service)** | Free              |  -                  |  -                    |  -               | Free                       |
+| **Power Consumption**   | Low                         | High                     | High                          | High                    | Low                        |
 
 Key quantitative differences are stark across these techniques. Accuracy potential is highest with RTK (centimeter-level), followed by converged PPP-RTK and PPP (decimeter-level), while DGNSS provides meter-level improvements. Convergence time critically separates them: DGNSS is near-instantaneous (<10s), RTK is fast only under ideal conditions (10s-2min), PPP-RTK takes 30 seconds to 5 minutes, whereas PPP is significantly slower (15-45+ min). Achieving high precision with RTK, PPP, or PPP-RTK necessitates dual-frequency hardware and raw measurement access. Infrastructure needs also diverge: RTK demands a very close base station (<20km), PPP requires global correction services, PPP-RTK relies on network service providers, and DGNSS uses SBAS or a moderately local base. Crucially, RTK's reliability plummets in urban settings due to its sensitivity, while PPP-RTK generally demonstrates greater robustness in such challenging environments.
 
 
 
 
-## Task 3 – GNSS in Urban Areas
+## Task 2 – GNSS in Urban Areas
 
-This Task focuses on the challenges of GNSS positioning within urban environments. These areas are characterized by:
+This task focuses on the challenges of GNSS positioning within urban environments. These areas are characterized by:
 * Signal Blockage: Buildings and structures obstruct the line-of-sight path between satellites and the receiver.
 * Multipath Effects: Signals reflect off surfaces, creating delayed and distorted versions of the original signal that interfere with the direct signal, leading to ranging errors.
 *  Poor Satellite Visibility: The limited view of the sky reduces the number and geometric diversity of visible satellites, weakening the positioning solution (high Geometric Dilution of Precision - GDOP).
@@ -53,7 +53,8 @@ This Task focuses on the challenges of GNSS positioning within urban environment
    - Altitude: 3.0 meters
 
  ### Methodology and Principles
-* Data Loading:   - Loads pseudoranges and satellite positions from 'navSolutions_opensky.mat'.
+* Data Loading:
+  - Loads pseudoranges and satellite positions from 'navSolutions_opensky.mat'.
 * Weighted Least Squares (WLS) Estimation (Simplified Implementation):
      - The core of GNSS positioning involves solving an overdetermined system of equations derived from pseudorange measurements. The basic pseudorange equation for satellite 'i' is `rho_i = sqrt((x_sat_i - x_user)^2 + (y_sat_i - y_user)^2 + (z_sat_i - z_user)^2) + c * dt_user + error_i`
      - This nonlinear equation is typically linearized around an approximate user position, leading to a linear system: `delta_rho = A * delta_x`.
@@ -63,7 +64,7 @@ This Task focuses on the challenges of GNSS positioning within urban environment
 * Fault Detection 
     - Receiver Autonomous Integrity Monitoring (RAIM) techniques are used to check the consistency of measurements.
     - The script calculates the residuals: `residuals = current_pseudoranges - A * position`.
-    - It computes a test statistic based on the sum of squared weighted residuals `chi_square = (residuals' * W * residuals) / sigma_r2`, where `sigma_r2 = (residuals' * residuals) / (n - 4)` is the estimated variance of the residuals (a-posteriori variance factor). `n` is the number of satellites, and 4 is the number of estimated parameters (x, y, z, clock).
+    - It computes a test statistic based on the sum of squared weighted residuals `chi_square = (residuals' * W * residuals) / sigma_r2`, where `sigma_r2 = (residuals' * residuals) / (n - 4)` is the estimated variance of the residuals (a-posteriori variance factor). `n` is the number of satellites, and 4 is the number of estimated parameters `(x, y, z, clock)`.
     - This statistic is compared against a critical value from the Chi-Square distribution (`chi2inv(0.99, n - 4)`), corresponding to a significance level (alpha) of 0.01 and `n-4` degrees of freedom.
     - If `chi_square > critical_value`, it indicates a potential fault or inconsistency in the measurements for that epoch (e.g., due to large multipath or other errors).
 * Protection Level (PL) Calculation (Simplified):
